@@ -39,6 +39,7 @@ export default function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null);
+  const [currentAudioUri, setCurrentAudioUri] = useState<string | null>(null);
 
   const routes = [
     { key: 'record', title: 'Record', focusedIcon: 'microphone', unfocusedIcon: 'microphone-outline' },
@@ -63,6 +64,7 @@ export default function App() {
   const handleRecordingComplete = async (uri: string, duration: number) => {
     setIsRecording(false);
     setIsProcessing(true);
+    setCurrentAudioUri(uri);
     
     try {
       const transcription = await transcriptionService.transcribeAudio(uri);
@@ -108,11 +110,13 @@ export default function App() {
   const handleClearTranscript = () => {
     setCurrentTranscription(null);
     setSelectedRecording(null);
+    setCurrentAudioUri(null);
   };
 
   const handleSelectRecording = (recording: Recording) => {
     setCurrentTranscription(recording.transcription);
     setSelectedRecording(recording);
+    setCurrentAudioUri(recording.audioUri);
     setIndex(0); // Switch to record tab
   };
 
@@ -127,6 +131,7 @@ export default function App() {
         <TranscriptDisplay
           transcription={currentTranscription}
           isProcessing={isProcessing}
+          audioUri={currentAudioUri || undefined}
           onEnhanceText={handleEnhanceText}
           onSave={handleSaveTranscript}
           onClear={handleClearTranscript}

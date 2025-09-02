@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { Button, Text, Card, ProgressBar, IconButton } from 'react-native-paper';
+import { View, StyleSheet, Alert, Animated } from 'react-native';
+import { Button, Text, Card, ProgressBar, IconButton, FAB } from 'react-native-paper';
 import { Audio } from 'expo-av';
 import { PermissionStatus } from 'expo-modules-core';
 import * as FileSystem from 'expo-file-system';
@@ -15,7 +15,9 @@ export default function AudioRecorder({ onRecordingComplete, onRecordingStateCha
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
   const durationInterval = useRef<any>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const startRecording = async () => {
     try {
@@ -39,6 +41,9 @@ export default function AudioRecorder({ onRecordingComplete, onRecordingStateCha
       setIsRecording(true);
       setRecordingDuration(0);
       onRecordingStateChange?.(true, false);
+
+      // Start pulsing animation
+      startPulseAnimation();
 
       // Update duration every second
       durationInterval.current = setInterval(() => {
@@ -76,12 +81,16 @@ export default function AudioRecorder({ onRecordingComplete, onRecordingStateCha
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
+    if (!recording || isProcessing) return;
 
     try {
+      setIsProcessing(true);
       setIsRecording(false);
       setIsPaused(false);
       onRecordingStateChange?.(false, false);
+      
+      // Stop animations
+      stopPulseAnimation();
       
       if (durationInterval.current) {
         clearInterval(durationInterval.current);
@@ -102,7 +111,35 @@ export default function AudioRecorder({ onRecordingComplete, onRecordingStateCha
     } catch (err) {
       console.error('Failed to stop recording', err);
       Alert.alert('Error', 'Failed to stop recording');
+    } finally {
+      setIsProcessing(false);
     }
+  };
+
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const stopPulseAnimation = () => {
+    pulseAnim.stopAnimation();
+    Animated.timing(pulseAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
   };
 
   const formatTime = (seconds: number) => {
@@ -141,34 +178,47 @@ export default function AudioRecorder({ onRecordingComplete, onRecordingStateCha
 
         <View style={styles.controlsContainer}>
           {!isRecording ? (
-            <Button
-              mode="contained"
-              onPress={startRecording}
-              style={styles.startButton}
-              icon="microphone"
-              contentStyle={styles.buttonContent}
-            >
-              Start Recording
-            </Button>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <FAB
+                icon="microphone"
+                onPress={startRecording}
+                style={styles.startFab}
+                size="large"
+                disabled={isProcessing}
+              />
+            </Animated.View>
           ) : (
             <View style={styles.activeControls}>
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <IconButton
+                  icon={isPaused ? "play" : "pause"}
+                  mode="contained"
+                  size={28}
+                  onPress={pauseRecording}
+                  style={styles.controlButton}
+                  disabled={isProcessing}
+                />
+              </Animated.View>
+              
               <IconButton
-                icon={isPaused ? "play" : "pause"}
+                icon={isProcessing ? "loading" : "stop"}
                 mode="contained"
-                size={24}
-                onPress={pauseRecording}
-                style={styles.controlButton}
-              />
-              <IconButton
-                icon="stop"
-                mode="contained"
-                size={24}
+                size={28}
                 onPress={stopRecording}
                 style={[styles.controlButton, styles.stopButton]}
+                disabled={isProcessing}
               />
             </View>
           )}
         </View>
+
+        {isProcessing && (
+          <View style={styles.processingContainer}>
+            <Text variant="bodySmall" style={styles.processingText}>
+              Processing recording...
+            </Text>
+          </View>
+        )}
       </Card.Content>
     </Card>
   );
@@ -189,6 +239,7 @@ const styles = StyleSheet.create({
   timer: {
     fontWeight: 'bold',
     color: '#EF4444',
+    fontSize: 32,
   },
   progressBar: {
     marginBottom: 20,
@@ -197,22 +248,28 @@ const styles = StyleSheet.create({
   },
   controlsContainer: {
     alignItems: 'center',
+    marginVertical: 16,
   },
-  startButton: {
-    paddingHorizontal: 20,
-  },
-  buttonContent: {
-    height: 50,
+  startFab: {
+    backgroundColor: '#6366F1',
   },
   activeControls: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
+    alignItems: 'center',
+    gap: 24,
   },
   controlButton: {
     backgroundColor: '#6366F1',
   },
   stopButton: {
     backgroundColor: '#EF4444',
+  },
+  processingContainer: {
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  processingText: {
+    opacity: 0.7,
   },
 });

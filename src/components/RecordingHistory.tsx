@@ -11,6 +11,7 @@ import {
   Chip
 } from 'react-native-paper';
 import { Recording, StorageService } from '../services/storageService';
+import AudioPlayer from './AudioPlayer';
 
 interface RecordingHistoryProps {
   onSelectRecording?: (recording: Recording) => void;
@@ -23,6 +24,7 @@ export default function RecordingHistory({ onSelectRecording, onDeleteRecording 
   const [searchQuery, setSearchQuery] = useState('');
   const [menuVisible, setMenuVisible] = useState<{ [key: string]: boolean }>({});
   const [sortBy, setSortBy] = useState<'date' | 'title'>('date');
+  const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadRecordings();
@@ -94,6 +96,10 @@ export default function RecordingHistory({ onSelectRecording, onDeleteRecording 
     }));
   };
 
+  const handlePlaybackStatusChange = (recordingId: string, isPlaying: boolean) => {
+    setPlayingRecordingId(isPlaying ? recordingId : null);
+  };
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
@@ -163,6 +169,19 @@ export default function RecordingHistory({ onSelectRecording, onDeleteRecording 
         <Text variant="bodySmall" numberOfLines={2} style={styles.transcriptPreview}>
           {item.transcription.text}
         </Text>
+
+        <View style={styles.playerContainer}>
+          <AudioPlayer
+            audioUri={item.audioUri}
+            isCompact={true}
+            onPlaybackStatusChange={(isPlaying) => handlePlaybackStatusChange(item.id, isPlaying)}
+          />
+          {playingRecordingId === item.id && (
+            <Chip icon="volume-high" style={styles.playingChip} compact>
+              Playing
+            </Chip>
+          )}
+        </View>
       </Card.Content>
     </Card>
   );
@@ -285,5 +304,14 @@ const styles = StyleSheet.create({
   emptySubtext: {
     textAlign: 'center',
     opacity: 0.6,
+  },
+  playerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  playingChip: {
+    backgroundColor: '#10B981',
   },
 });

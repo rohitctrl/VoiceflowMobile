@@ -14,10 +14,12 @@ import {
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { TranscriptionResult } from '../services/transcriptionService';
+import AudioPlayer from './AudioPlayer';
 
 interface TranscriptDisplayProps {
   transcription: TranscriptionResult | null;
   isProcessing: boolean;
+  audioUri?: string;
   onEnhanceText: (mode: 'summary' | 'bullets' | 'action_items') => void;
   onSave: (editedText: string) => void;
   onClear: () => void;
@@ -25,7 +27,8 @@ interface TranscriptDisplayProps {
 
 export default function TranscriptDisplay({ 
   transcription, 
-  isProcessing, 
+  isProcessing,
+  audioUri, 
   onEnhanceText, 
   onSave,
   onClear 
@@ -166,6 +169,14 @@ export default function TranscriptDisplay({
         </View>
 
         <Divider style={styles.divider} />
+
+        {audioUri && (
+          <AudioPlayer
+            audioUri={audioUri}
+            title="Recording Playback"
+            isCompact={false}
+          />
+        )}
 
         {enhancing && (
           <View style={styles.enhancingContainer}>
